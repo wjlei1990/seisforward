@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# #######################################################
+ #######################################################
 # Script that generate the job submission scripts on titan
 # using the original job_template. For example, you have 50
 # events in the XEVENTID file. But you may not want to submie
@@ -59,13 +59,14 @@ def form_deriv_string_for_srcinv(deriv_cmt_list):
 
 def modify_job_sbatch_file(inputfile, outputfile, nsimul_serial,
                            nnodes, walltime, deriv_cmt_list,
-                           specfemdir, simul_type):
+                           specfemdir, simul_type, email):
     fi = open(inputfile, "r")
     fo = open(outputfile, "w")
 
     content = fi.readlines()
 
     for line in content:
+        line = re.sub(r"^#PBS -M.*", "#PBS _M %s" % email, line)
         line = re.sub(r"^#PBS -l nodes=.*", "#PBS -l nodes=%d" %
                       nnodes, line)
         line = re.sub(r"^#PBS -l walltime=.*", "#PBS -l walltime=%s" %
@@ -73,7 +74,7 @@ def modify_job_sbatch_file(inputfile, outputfile, nsimul_serial,
         line = re.sub(r"total_serial_runs=.*",
                       "total_serial_runs=%d" % nsimul_serial,
                       line)
-        line = re.sub(r"runbase=.*", "runbase=\"%s\"" % specfemdir, line)
+        line = re.sub(r"specfemdir=.*", "specfemdir=\"%s\"" % specfemdir, line)
         line = re.sub(r"^numproc=.*", "numproc=%d" % nnodes, line)
 
         if simul_type == "source_inversion":
@@ -91,7 +92,6 @@ def modify_pbs_script(config, eventlist):
     nsimul_serial = config["job_info"]["nsimul_serial"]
     nevents_per_simul_run = config["job_info"]["nevents_per_simul_run"]
     walltime_per_simulation = config["job_info"]["walltime_per_simulation"]
-
 
     # calculate nodes used
     specfemdir = os.path.join(runbase, "specfem3d_globe")
@@ -114,6 +114,11 @@ def modify_pbs_script(config, eventlist):
     outputfn = "job_solver.bash"
     specfemdir = os.path.join(runbase, "specfem3d_globe")
 
+    try:
+        email = config["user_info"]["email"]
+    except:
+        email = "xxx@princeton.edu"
+
     print("====== Create job scripts =======")
     print("Simulation type: %s" % simul_type)
     print("Number of events in simul run: %d" % nevents_per_simul_run)
@@ -129,7 +134,7 @@ def modify_pbs_script(config, eventlist):
 
     modify_job_sbatch_file(job_template, outputfn, nsimul_serial,
                            nnodes_per_job, walltime, deriv_cmt_list,
-                           specfemdir, simul_type)
+                           specfemdir, simul_type, email)
 
     # modify parfile to simulataneous run
     modify_parfile_for_simul_run(specfemdir, nevents_per_simul_run)

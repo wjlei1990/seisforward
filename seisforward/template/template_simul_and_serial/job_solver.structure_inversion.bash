@@ -6,10 +6,10 @@
 #PBS -m a
 #PBS -m b
 #PBS -m e
-#PBS -M lei@princeton.edu
+#PBS -M NAP@princeton.edu
 #PBS -o job_sb.$PBS_JOBID.o
-#PBS -l nodes=480
-#PBS -l walltime=1:00:00
+#PBS -l nodes=NAN
+#PBS -l walltime=NAN
 
 # -----------------------------------------------------
 # This is a simulataneous and serial job script
@@ -17,9 +17,9 @@
 # So it needs to loop 5 times in serial, inside which 50
 # simultaneous runs
 # User Parameter
-total_serial_runs=5
-specfemdir="/lustre/atlas/proj-shared/geo111/Wenjie/test/seisforward/runbase/specfem3d_globe"
-numproc=480
+total_serial_runs=NAN
+specfemdir=NAN
+numproc=NAN
 # -----------------------------------------------------
 
 cd $PBS_O_WORKDIR
