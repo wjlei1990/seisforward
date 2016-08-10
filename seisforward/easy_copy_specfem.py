@@ -9,15 +9,8 @@ import os
 import argparse
 import glob
 import shutil
-from .utils import copyfile, load_config
+from .utils import copyfile, load_config, validate_config, safe_makedir
 from .check_specfem import check_specfem
-
-
-def safe_copy(fn, specfemdir, targetdir):
-    origin_file = os.path.join(specfemdir, fn)
-    target_file = os.path.join(targetdir, fn)
-
-    copyfile(origin_file, target_file)
 
 
 def safe_copy_model_file(specfemdir, targetdir):
@@ -44,12 +37,21 @@ def easy_copy_specfem(specfemdir, targetdir):
 
     check_specfem(specfemdir)
 
+    safe_makedir(os.path.join(targetdir, "DATA"))
+    safe_makedir(os.path.join(targetdir, "bin"))
+    safe_makedir(os.path.join(targetdir, "OUTPUT_FILES"))
+    safe_makedir(os.path.join(targetdir, "DATABASES_MPI"))
+
     print("--------------------------")
     filelist = ["bin/xspecfem3D", "OUTPUT_FILES/addressing.txt",
                 "OUTPUT_FILES/values_from_mesher.h",
                 "DATA/Par_file"]
+
     for fn in filelist:
-        safe_copy(fn, specfemdir, targetdir)
+        origin_file = os.path.join(specfemdir, fn)
+        target_file = os.path.join(targetdir, fn)
+        copyfile(origin_file, target_file)
+
     safe_copy_model_file(specfemdir, targetdir)
 
 
@@ -59,6 +61,7 @@ def main():
                         required=True, help="config yaml file")
     args = parser.parse_args()
     config = load_config(args.config_file)
+    validate_config(config)
 
     print("******************************************")
     specfemdir = config["data_info"]["specfemdir"]

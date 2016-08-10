@@ -13,13 +13,12 @@
 from __future__ import print_function, division
 import glob
 import os
-import yaml
 import shutil
 
 from .utils import safe_makedir, copyfile
 from .utils import read_txt_into_list, dump_list_to_txt
 from .utils import load_config
-from .modify_pbs_script import modify_pbs_script
+from .modify_pbs_script import modify_pbs_script, modify_specfem_parfile
 from .check_specfem import check_specfem
 
 
@@ -59,6 +58,40 @@ def setup_simul_run_dir(runbase, nruns):
                 os.unlink(_dir)
             else:
                 shutil.remove(_dir)
+
+
+def setup_adjoint_archive(config, eventlist):
+    """
+    Make directory at "./outputbase" for each event:
+        1) Check DATA, DATABASES_MPI, OUTPUT_FILES directories in
+            archive, since they will be used as runbase
+        2) make sure that adjoint.h5 is there
+        3) copy STATIONS_ADJOINT
+    """
+    archivebase = os.path.join(config["data_info"]["runbase"], "archive")
+    err = 0
+    for event in eventlist:
+        dirname = os.path.join(archivebase, event)
+        if not os.path.exists(dirname):
+            print("Missing dir in archive: %s" % dirname)
+            err = -1
+            continue
+        semdir = os.path.join(dirname, "SEM")
+        adjointfile = os.path.join(semdir, "adjoint.h5")
+        if not os.path.exists(adjointfile):
+            print("Missing adjoint file: %s" % adjointfile)
+            err = -1
+
+    if err != 0:
+        raise ValueError("Error in archive dir")
+
+    for idx, event in enumerate(eventlist):
+        dirname = os.path.join(archivebase, event)
+        print("%03d --- event %s --- dir: %s" % (idx+1, event, dirname))
+        datadir = os.path.join(dirname, "DATA")
+        stationfile = os.path.join("station", "STATIONS_ADJOINT.%s" % event)
+        targetfile = os.path.join(datadir, "STATIONS_ADJOINT")
+        shutil.copy(stationfile, targetfile)
 
 
 def setup_outputbase(config, eventlist):
@@ -130,7 +163,7 @@ def split_eventlist(eventlist, nsimuls, nserials):
     if nevents_total > nsimuls * nserials or \
             nevents_total < nsimuls * (nserials - 1):
         raise ValueError("Length of eventlist(%d) is in range of "
-                         "nsimul_runs(%d) and nsimul_serial(%d)"
+                         "nsimul_runs(%d) and n_serial(%d)"
                          % (nevents_total, nsimuls, nserials))
 
     for i in range(nserials):
@@ -151,9 +184,6 @@ def prepare_jobs(config_file, eventlist_file):
     config = load_config(config_file)
     eventlist = read_txt_into_list(eventlist_file)
 
-    specfemdir = config["data_info"]["specfemdir"]
-    check_specfem(specfemdir)
-
     # copy specfem stuff
     print("-" * 10 + "  setup simul run sub-dir  " + "-" * 10)
     setup_simul_run_dir(config["data_info"]["runbase"],
@@ -162,18 +192,30 @@ def prepare_jobs(config_file, eventlist_file):
     # split the whole eventlist into sub eventlist according to
     # config[1]["nevents_per_simul_runs"]
     split_eventlist(eventlist, config["job_info"]["nevents_per_simul_run"],
-                    config["job_info"]["nsimul_serial"])
+                    config["job_info"]["n_serial"])
 
     # perturb cmt files if simulation_type == source_inversion
-    cmtdir = "cmtfile"
-    if config["simulation_type"] == "source_inversion":
+    stype = config["simulation_type"]
+    if stype == "source_inversion":
+        cmtdir = "cmtfile"
         perturb_cmt(eventlist, cmtdir, config["srcinv_info"])
 
     # setup output base
-    setup_outputbase(config, eventlist)
+    if stype in ["source_inversion", "forward_simulation"]:
+        setup_outputbase(config, eventlist)
+    elif stype == "adjoint_simulation":
+        setup_adjoint_archive(config, eventlist)
 
     # setup job scripts
     modify_pbs_script(config, eventlist)
+
+    # setup specfem parfile
+    modify_specfem_parfile(config)
+
+    # check specfem
+    specfemdir = os.path.join(config["data_info"]["runbase"],
+                              "specfem3d_globe")
+    check_specfem(specfemdir)
 
     print("*"*30)
     print("Please check related files and then submit jobs")

@@ -5,36 +5,71 @@ import yaml
 import shutil
 
 
-def check_config(config):
-    running_mode = config["job_info"]["running_mode"]
-    _options = ["simul", "simul_and_serial"]
-    if running_mode not in _options:
-        raise ValueError("running mode(%s) not supported: %s"
-                         % (running_mode, _options))
+def validate_config_srcinv(config):
+    if "srcinv_info" not in config:
+        raise ValueError("srcinv_info must be provided if "
+                         "simulation_type is source_inversion")
+    keys = ["generate_deriv_cmt", "deriv_cmt_list", "dmoment_tensor",
+            "ddepth", "dlatitude", "dlongitude"]
+    for key in keys:
+        if key not in config["srcinv_info"]:
+            raise ValueError("Key(%s) missing in config srcinv_info"
+                             % (key))
 
-    if config["job_info"]["nsimul_serial"] < 1:
-        raise ValueError("nsimul_serial(%d) can not be less than 1")
 
-    nevents_per_mpirun = config["job_info"]["nevents_per_simul_run"]
-    if nevents_per_mpirun <= 1:
-        raise ValueError("nevents_per_mpirun should be larger than 1")
+def validate_config_adjoint(config):
+    keys = ["linkbase"]
+    for key in keys:
+        if key not in config["data_info"]:
+            raise ValueError("Key(%s) missing in config['data_info']")
 
+
+def validate_config(config):
+    """ Validtate config information """
+    _options = ["source_inversion", "forward_simulation",
+                "adjoint_simulation"]
     simul_type = config["simulation_type"]
-    _options = ["structure_inversion", "source_inversion"]
     if simul_type not in _options:
         raise ValueError("simulation_type(%s) not in: %s"
                          % (simul_type, _options))
 
+    job_info = config["job_info"]
+    if job_info["n_serial"] < 1:
+        raise ValueError("n_serial can not be less than 1")
+    if job_info["nevents_per_simul_run"] < 1:
+        raise ValueError("nevents_per_simul_run should be larger "
+                         "than 1")
+    if job_info["walltime_per_simulation"] <= 0:
+        raise ValueError("walltime_per_simulation shoulb be > 0")
+
+    data_info = config["data_info"]
+    keys = ["stationfolder", "runbase", "total_eventfile",
+            "job_tag", "specfemdir"]
+    if simul_type in ["source_inversion", "forward_simulation"]:
+        keys.append("cmtfolder")
+    elif simul_type == "adjoint_simulation":
+        keys.append("adjointfolder")
+    for key in keys:
+        if key not in data_info:
+            raise ValueError("Key(%s) not in config data_info" % (key))
+
+    user_info = config["user_info"]
+    keys = ["email"]
+    for key in keys:
+        if key not in user_info:
+            raise ValueError("Key(%s) not in config user_info" % key)
+
+    # validate certain simulation types
     if simul_type == "source_inversion":
-        if "srcinv_info" not in config:
-            raise ValueError("srcinv_info must be provided if "
-                             "simulation_type is source_inversion")
+        validate_config_srcinv(config)
+    elif simul_type == "adjoint_simulation":
+        validate_config_adjoint(config)
 
 
 def load_config(filename):
     with open(filename) as fh:
         config = yaml.load(fh)
-    check_config(config)
+    # validate_config(config)
     return config
 
 

@@ -14,6 +14,7 @@ def fortran_bool(string):
 
 
 def check_specfem(specfemdir):
+    """ Check all necessary files for job running """
     print("============= Checking SPECFEM3D_GLOBE ============")
     check_specfem_common(specfemdir)
     check_specfem_model(specfemdir)
@@ -39,7 +40,7 @@ def check_specfem_model(specfemdir):
     path = os.path.join(specfemdir, "DATABASES_MPI")
     bpfiles = glob.glob(os.path.join(path, "*.bp"))
     binfiles = glob.glob(os.path.join(path, "*.bin"))
-    print("Number of bp files:%d: and number of bin files:%d:"
+    print("Number of bp files :: %d ::\nnumber of bin files :: %d ::"
           % (len(bpfiles), len(binfiles)))
     if len(bpfiles) == 4:
         if len(binfiles) != 1:
@@ -104,15 +105,15 @@ def check_specfem_parfile(parfile_path):
     print("GPU mode and ADIOS: \t\t%s, %s" % (gpu_mode, adios_enabled))
 
     err = 0
-    #if stype == 1:
+    # if stype == 1:
     #    if not save_forward:
     #        print("Error: Forward simulation must save_forward")
     #        err = 1
-    #elif stype == 3:
-    #    if save_forward:
-    #        print("Error: Adjoint simulation can't save_forward")
-    #        err = 1
-    #else:
+    if stype == 3:
+        if save_forward:
+            print("Error: Adjoint simulation can't save_forward")
+            err = 1
+    # else:
     #    print("Error: Unrecongnized simulation_type(%d)" % stype)
     #    err = 1
 
