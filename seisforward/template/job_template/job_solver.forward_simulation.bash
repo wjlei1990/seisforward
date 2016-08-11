@@ -9,6 +9,7 @@
 #PBS -M NAP@princeton.edu
 #PBS -o job_sb.$PBS_JOBID.o
 #PBS -l nodes=NAN
+#PBS -l feature=nogpureset
 #PBS -l walltime=NAN
 
 # -----------------------------------------------------
@@ -21,6 +22,7 @@ total_serial_runs=NAN
 specfemdir=NAN
 numproc=NAN
 linkbase=NAN
+timeout_aprun=NAN
 # -----------------------------------------------------
 
 cd $PBS_O_WORKDIR
@@ -64,15 +66,19 @@ do
     echo "Idx: $event_index_name --- event $event"
     echo "subrun dir: $subrundir"
     echo "linkdir: $linkdir"
-    ### Clean model file in DATABASES_MPI
-    rm -rf $linkdir/DATABASES_MPI/attenuation.bp
-    rm -rf $linkdir/DATABASES_MPI/boundary.bp
-    rm -rf $linkdir/DATABASES_MPI/solver_data.bp
-    rm -rf $linkdir/DATABASES_MPI/solver_data_mpi.bp
-    rm -rf $linkdir/DATABASES_MPI/proc000000_reg1_topo.bin
+    ### remove $subrundir
+    if [ -e $subrundir ]; then
+      rm $subrundir
+    fi
     ### LINK run000* to linkdir
     ln -s $linkdir $subrundir
     if [ $event_idx == 1 ]; then
+      ### Clean model file in DATABASES_MPI
+      rm $linkdir/DATABASES_MPI/attenuation.bp
+      rm $linkdir/DATABASES_MPI/boundary.bp
+      rm $linkdir/DATABASES_MPI/solver_data.bp
+      rm $linkdir/DATABASES_MPI/solver_data_mpi.bp
+      rm $linkdir/DATABASES_MPI/proc000000_reg1_topo.bin
       # LINK MODEL file for run0001 only
       model_base=$specfemdir"/DATABASES_MPI"
       echo "model base: "$mode_base
@@ -96,7 +102,12 @@ do
   echo "cd to specfemdir: `pwd`"
   #ls -alh
   echo "solver start: `date`"
-  aprun -n $numproc -N1 ./bin/xspecfem3D
+  echo "timeout -s INT $timeout_aprun aprun -n $numproc -N1 ./bin/xspecfem3D"
+
+  EXCLUDE_NODES="$(aprun -n $PBS_NUM_NODES -N 1 /opt/bin/nvml.power_check.pl | grep ERROR: | awk '{print $2}' | xargs -r echo -n '--exclude-node-list' | sed -r 's/([^a-z]) /\1,/g')"
+  timeout -s INT $timeout_aprun aprun -n $numproc -N1 ${EXCLUDE_NODES} ./bin/xspecfem3D
+  sleep 10
+
   touch run0001/OUTPUT_FILES/proof.txt
   echo "solver end: `date`"
 

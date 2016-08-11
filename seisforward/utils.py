@@ -18,10 +18,15 @@ def validate_config_srcinv(config):
 
 
 def validate_config_adjoint(config):
-    keys = ["linkbase"]
+    # linkbase is dir to store
+    keys = ["linkbase", "adjointfolder"]
     for key in keys:
         if key not in config["data_info"]:
             raise ValueError("Key(%s) missing in config['data_info']")
+
+
+def validate_config_forward(config):
+    pass
 
 
 def validate_config(config):
@@ -47,8 +52,6 @@ def validate_config(config):
             "job_tag", "specfemdir"]
     if simul_type in ["source_inversion", "forward_simulation"]:
         keys.append("cmtfolder")
-    elif simul_type == "adjoint_simulation":
-        keys.append("adjointfolder")
     for key in keys:
         if key not in data_info:
             raise ValueError("Key(%s) not in config data_info" % (key))
@@ -64,6 +67,8 @@ def validate_config(config):
         validate_config_srcinv(config)
     elif simul_type == "adjoint_simulation":
         validate_config_adjoint(config)
+    elif simul_type == "forward_simulation":
+        validate_config_forward(config)
 
 
 def load_config(filename):

@@ -6,6 +6,9 @@ and you want to split it into 50 events/per file. There will
 be 6 files generated. The first 5 files will have 50 events
 while the last will have 20 events.
 The output job scripts will be put at "$runbase/jobs"
+1) split the eventlist
+2) create job sub-folder
+3) check specfem3d_globe integrity
 """
 from __future__ import print_function, division, absolute_import
 import os
@@ -160,10 +163,9 @@ def copy_scripts_template(simulation_type, targetdir):
 
 def create_job_folder(eventlist_dict, config):
     # create job folder
+    simulation_type = config["simulation_type"]
     tag = config["data_info"]["job_tag"]
     stafolder = config["data_info"]["stationfolder"]
-    simulation_type = config["simulation_type"]
-    adjointfolder = config["data_info"]["adjointfolder"]
 
     print("*"*20 + "\nCreat job sub folders")
     jobs_dir = os.path.join(config["data_info"]["runbase"], "jobs")
@@ -181,14 +183,15 @@ def create_job_folder(eventlist_dict, config):
         dump_eventlist_subdir(eventlist, targetdir)
 
         # copy original cmt file and station file
-        if simulation_type == "forward_simulation":
+        if simulation_type in ["forward_simulation", "source_inversion"]:
             cmtfolder = config["data_info"]["cmtfolder"]
             targetcmtdir = os.path.join(targetdir, "cmtfile")
             copy_cmtfiles(eventlist, cmtfolder, targetcmtdir)
             targetstadir = os.path.join(targetdir, "station")
             copy_stations(eventlist, stafolder, targetstadir,
                           tag="forward")
-        else:
+        elif simulation_type == "adjoint_simulation":
+            adjointfolder = config["data_info"]["adjointfolder"]
             targetstadir = os.path.join(targetdir, "station")
             copy_stations(eventlist, stafolder, targetstadir,
                           tag="adjoint")
@@ -212,14 +215,15 @@ def main():
     config = load_config(args.config_file)
     validate_config(config)
 
+    # split eventlist
     eventlist_dict = split_eventlist(config)
+    # create job folder
+    create_job_folder(eventlist_dict, config)
 
+    # check specfem
     specfemdir = os.path.join(config["data_info"]["runbase"],
                               "specfem3d_globe")
     check_specfem(specfemdir)
-
-    # create job folder
-    create_job_folder(eventlist_dict, config)
 
 
 if __name__ == "__main__":

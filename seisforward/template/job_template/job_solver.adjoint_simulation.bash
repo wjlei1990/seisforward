@@ -66,7 +66,7 @@ do
     echo "Idx: $event_index_name --- event $event"
     echo "subrun dir: $subrundir"
     echo "linkdir: $linkdir"
-    ### run $subrundir
+    ### remove $subrundir
     if [ -d $subrundir ]; then
       rm $subrundir
     fi

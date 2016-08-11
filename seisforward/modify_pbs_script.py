@@ -185,7 +185,8 @@ def modify_pbs_script(config, eventlist):
         # for adjoint simulation, link to the archive
         linkbase = os.path.join(runbase, "archive")
     else:
-        linkbase = "NAN"
+        cwd = os.getcwd()
+        linkbase = os.path.join(cwd, "outputbase")
 
     try:
         email = config["user_info"]["email"]
