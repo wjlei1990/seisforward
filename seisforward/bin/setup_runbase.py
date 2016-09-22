@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Set up directories for the source inversion, Except
-specfem related files. For those files, use copy_mesh.pbs file
+Set up directories for specfem simulation including
+specfem related files(model files, binary files and etc).
 Attention: this script only setup the basic directory
 Developer: Wenjie Lei
 -------------------
@@ -14,11 +14,14 @@ Directory structure:
 from __future__ import print_function, division, absolute_import
 import os
 import argparse
-from .utils import safe_makedir, load_config, validate_config
+from seisforward.utils import safe_makedir
+from seisforward.io import load_config
+from seisforward.validate_config import validate_config
+from seisforward.easy_copy_specfem import easy_copy_specfem
 
 
 def create_runbase(runbase):
-    print("Create runbase at dir: %s" % runbase)
+    print("*" * 30 + "\nCreate runbase at dir: %s" % runbase)
     if not os.path.exists(runbase):
         os.makedirs(runbase)
 
@@ -26,16 +29,6 @@ def create_runbase(runbase):
 
     for _dir in subdirs:
         safe_makedir(os.path.join(runbase, _dir))
-
-    # safe_makedir(specfemdir)
-    # safe_makedir(os.path.join(specfemdir, "DATA"))
-    # safe_makedir(os.path.join(specfemdir, "bin"))
-    # safe_makedir(os.path.join(specfemdir, "OUTPUT_FILES"))
-    # safe_makedir(os.path.join(specfemdir, "DATABASES_MPI"))
-
-    print("="*20 + "\nPlease use easy_copy_specfem.py to copy specfem into "
-          "\"$runbase/specfem3d_globe\". \n"
-          "Usage: seisforward-easy_copy_specfem -c config.yaml")
 
 
 def main():
@@ -48,8 +41,12 @@ def main():
     config = load_config(args.config_file)
     validate_config(config)
 
-    runbase = config["data_info"]["runbase"]
+    runbase = config["runbase"]
     create_runbase(runbase)
+
+    specfemdir = config["data_info"]["specfemdir"]
+    targetdir = os.path.join(runbase, "specfem3d_globe")
+    easy_copy_specfem(specfemdir, targetdir)
 
 
 if __name__ == "__main__":

@@ -105,24 +105,25 @@ def form_deriv_string_for_srcinv(deriv_cmt_list):
 
 def modify_job_sbatch_file(job_template, job_script, n_serial, nnodes,
                            walltime, timeout_sec,
-                           specfemdir, linkbase, simul_type,
+                           specfemdir, linkbase, modelbase, simul_type,
                            email, deriv_cmt_list=None):
     """
     Modify the pbs job script, based on the job template
     1) email: user email
     2) number of nodes: pbs header(nnodes)
-    2) walltime: total walltime in pbs header
-    3) walltime_per_simulation: for timeout aprun
-    2) total_serial_runs: number of serial apruns(nserial)
-    3) specfemdir: the directory of specfem to run the code
+    3) walltime: total walltime in pbs header
+    4) walltime_per_simulation: for timeout aprun
+    5) total_serial_runs: number of serial apruns(nserial)
+    6) specfemdir: the directory of specfem to run the code
+    7) linkbase: rundir
+    8) modebase: model directory
     4) numproc: in aprun, using GPU, so same as nnodes
     5) linkbase: the linkbase(to be linked as run****)
     """
-    fi = open(job_template, "r")
-    fo = open(job_script, "w")
+    with open(job_template) as fh:
+        content = [line.rstrip() for line in fh]
 
-    content = fi.readlines()
-
+    new_content = []
     for line in content:
         line = re.sub(r"^#PBS -M.*", "#PBS _M %s" % email, line)
         line = re.sub(r"^#PBS -l nodes=.*", "#PBS -l nodes=%d" %
@@ -136,6 +137,8 @@ def modify_job_sbatch_file(job_template, job_script, n_serial, nnodes,
                       line)
         line = re.sub(r"^numproc=.*", "numproc=%d" % nnodes, line)
         line = re.sub(r"^linkbase=.*", "linkbase=\"%s\"" % linkbase, line)
+        line = re.sub(r"^model_base=.*", "model_base=\"%s\"" % modelbase,
+                      line)
         line = re.sub(r"^timeout_aprun=.*", "timeout_aprun=%d" % timeout_sec,
                       line)
 
@@ -144,18 +147,20 @@ def modify_job_sbatch_file(job_template, job_script, n_serial, nnodes,
                 raise ValueError("deriv_cmt_list for source inversion must be"
                                  "type of list")
             line = re.sub(r"^ext=.*", deriv_cmt_list, line)
+        new_content.append(line)
 
-        fo.write(line)
+    with open(job_script, 'w') as fh:
+        for line in new_content:
+            fh.write("%s\n" % line)
 
 
-def modify_pbs_script(config, eventlist):
+def generate_pbs_script(template, outputfn, config, specfemdir):
 
     simul_type = config["simulation_type"]
-    runbase = config["data_info"]["runbase"]
+    runbase = config["runbase"]
 
     # calculate nodes used
-    nevents_per_simul_run = config["job_info"]["nevents_per_simul_run"]
-    specfemdir = os.path.join(runbase, "specfem3d_globe")
+    nevents_per_simul_run = config["job_config"]["nevents_per_simul_run"]
     specfem_parfile = os.path.join(specfemdir, "DATA", "Par_file")
     nnodes_per_simulation = extract_number_of_nodes(specfem_parfile)
     nnodes_per_job = nnodes_per_simulation * nevents_per_simul_run
@@ -166,8 +171,8 @@ def modify_pbs_script(config, eventlist):
         deriv_cmt_list = []
 
     # calcuate walltime
-    n_serial = config["job_info"]["n_serial"]
-    walltime_per_simulation = config["job_info"]["walltime_per_simulation"]
+    n_serial = config["job_config"]["n_serial"]
+    walltime_per_simulation = config["job_config"]["walltime_per_simulation"]
     # give every aprun one more minute(for gpu failure recovery)
     total_time_in_min = \
         walltime_per_simulation * (len(deriv_cmt_list) + 1) * n_serial + \
@@ -176,26 +181,17 @@ def modify_pbs_script(config, eventlist):
     walltime = "%d:%02d:00" % (hour, minute)
     timeout_sec = walltime_per_simulation * 60
 
-    # create job pbs script
-    job_template = "job_solver.%s.bash" % simul_type
-    job_script = "job_solver.bash"
-    specfemdir = os.path.join(runbase, "specfem3d_globe")
-
-    if simul_type == "adjoint_simulation":
-        # for adjoint simulation, link to the archive
-        linkbase = os.path.join(runbase, "archive")
-    else:
-        cwd = os.getcwd()
-        linkbase = os.path.join(cwd, "outputbase")
+    linkbase = os.path.join(runbase, "archive")
+    modelbase = os.path.join(runbase, "specfem3d_globe", "DATABASES_MPI")
 
     try:
         email = config["user_info"]["email"]
     except:
         email = "xxx@princeton.edu"
 
-    modify_job_sbatch_file(job_template, job_script, n_serial, nnodes_per_job,
+    modify_job_sbatch_file(template, outputfn, n_serial, nnodes_per_job,
                            walltime, timeout_sec,
-                           specfemdir, linkbase, simul_type, email,
+                           specfemdir, linkbase, modelbase, simul_type, email,
                            deriv_cmt_list=deriv_cmt_list)
 
     print("====== Create job scripts =======")
@@ -208,16 +204,13 @@ def modify_pbs_script(config, eventlist):
     print("Walltime per simul run and job: 00:%02d:00 * %d =  %s" %
           (walltime_per_simulation, n_serial, walltime))
     print("-----")
-    print("PBS script template: %s" % job_template)
-    print("Final job script: %s" % job_script)
+    print("PBS script template: %s" % template)
+    print("Final job script: %s" % outputfn)
 
 
-def modify_specfem_parfile(config):
+def modify_specfem_parfile(config, specfemdir):
 
-    runbase = config["data_info"]["runbase"]
-    specfemdir = os.path.join(runbase, "specfem3d_globe")
-
-    nevents_per_simul_run = config["job_info"]["nevents_per_simul_run"]
+    nevents_per_simul_run = config["job_config"]["nevents_per_simul_run"]
     simul_type = config["simulation_type"]
 
     # modify parfile to simulataneous run

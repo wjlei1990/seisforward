@@ -20,8 +20,9 @@
 # User Parameter
 total_serial_runs=NAN
 specfemdir=NAN
-numproc=NAN
+model_base=NAN
 linkbase=NAN
+numproc=NAN
 timeout_aprun=NAN
 # -----------------------------------------------------
 
@@ -80,8 +81,7 @@ do
       rm $linkdir/DATABASES_MPI/solver_data_mpi.bp
       rm $linkdir/DATABASES_MPI/proc000000_reg1_topo.bin
       # LINK MODEL file for run0001 only
-      model_base=$specfemdir"/DATABASES_MPI"
-      echo "model base: "$mode_base
+      echo "model base: "$model_base
       ln -s $model_base"/attenuation.bp" $subrundir"/DATABASES_MPI/attenuation.bp"
       ln -s $model_base"/boundary.bp" $subrundir"/DATABASES_MPI/boundary.bp"
       ln -s $model_base"/solver_data.bp" $subrundir"/DATABASES_MPI/solver_data.bp"

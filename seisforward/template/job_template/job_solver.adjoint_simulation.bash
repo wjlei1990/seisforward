@@ -67,7 +67,7 @@ do
     echo "subrun dir: $subrundir"
     echo "linkdir: $linkdir"
     ### remove $subrundir
-    if [ -d $subrundir ]; then
+    if [ -e $subrundir ]; then
       rm $subrundir
     fi
     ### LINK run000* to linkdir

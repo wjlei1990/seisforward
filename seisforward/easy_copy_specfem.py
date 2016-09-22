@@ -6,10 +6,9 @@
 # in your "$runbase/specfem3d_globe"
 from __future__ import print_function, division, absolute_import
 import os
-import argparse
 import glob
 import shutil
-from .utils import copyfile, load_config, validate_config, safe_makedir
+from .utils import copyfile, safe_makedir
 from .check_specfem import check_specfem
 
 
@@ -30,8 +29,11 @@ def safe_copy_model_file(specfemdir, targetdir):
         shutil.copy2(_file, target_model_dir)
 
 
-def easy_copy_specfem(specfemdir, targetdir):
+def easy_copy_specfem(specfemdir, targetdir, model_flag=True):
 
+    print("*" * 10 + " Copy Specfem " + "*" * 10)
+    print("Specfem dir: %s" % specfemdir)
+    print("Target dir: %s" % targetdir)
     if not os.path.exists(specfemdir):
         raise ValueError("No specfem dir: %s" % specfemdir)
 
@@ -52,27 +54,5 @@ def easy_copy_specfem(specfemdir, targetdir):
         target_file = os.path.join(targetdir, fn)
         copyfile(origin_file, target_file)
 
-    safe_copy_model_file(specfemdir, targetdir)
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', action='store', dest='config_file',
-                        required=True, help="config yaml file")
-    args = parser.parse_args()
-    config = load_config(args.config_file)
-    validate_config(config)
-
-    print("******************************************")
-    specfemdir = config["data_info"]["specfemdir"]
-    print("The directory of specfem package: %s" % specfemdir)
-
-    targetdir = os.path.join(config["data_info"]["runbase"],
-                             "specfem3d_globe")
-    print("Target dir: %s" % targetdir)
-
-    easy_copy_specfem(specfemdir, targetdir)
-
-
-if __name__ == "__main__":
-    main()
+    if model_flag:
+        safe_copy_model_file(specfemdir, targetdir)

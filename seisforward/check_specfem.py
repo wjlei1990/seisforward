@@ -1,7 +1,8 @@
 import os
 import glob
 import re
-from .utils import read_txt_into_list
+from .io import read_txt_into_list
+from .utils import make_title
 
 
 def fortran_bool(string):
@@ -15,7 +16,8 @@ def fortran_bool(string):
 
 def check_specfem(specfemdir):
     """ Check all necessary files for job running """
-    print("============= Checking SPECFEM3D_GLOBE ============")
+    print(make_title("Checking SPECFEM3D_GLOBE", symbol="*",
+                     symbol_len=5))
     check_specfem_common(specfemdir)
     check_specfem_model(specfemdir)
 

@@ -1,86 +1,21 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, absolute_import
 import os
-import yaml
+import sys
+import glob
 import shutil
+import time
 
 
-def validate_config_srcinv(config):
-    if "srcinv_info" not in config:
-        raise ValueError("srcinv_info must be provided if "
-                         "simulation_type is source_inversion")
-    keys = ["generate_deriv_cmt", "deriv_cmt_list", "dmoment_tensor",
-            "ddepth", "dlatitude", "dlongitude"]
-    for key in keys:
-        if key not in config["srcinv_info"]:
-            raise ValueError("Key(%s) missing in config srcinv_info"
-                             % (key))
+def timer(func):
+    def timed(*args, **kws):
+        ts = time.time()
+        result = func(*args, **kws)
+        te = time.time()
 
-
-def validate_config_adjoint(config):
-    # linkbase is dir to store
-    keys = ["linkbase", "adjointfolder"]
-    for key in keys:
-        if key not in config["data_info"]:
-            raise ValueError("Key(%s) missing in config['data_info']")
-
-
-def validate_config_forward(config):
-    pass
-
-
-def validate_config(config):
-    """ Validtate config information """
-    _options = ["source_inversion", "forward_simulation",
-                "adjoint_simulation"]
-    simul_type = config["simulation_type"]
-    if simul_type not in _options:
-        raise ValueError("simulation_type(%s) not in: %s"
-                         % (simul_type, _options))
-
-    job_info = config["job_info"]
-    if job_info["n_serial"] < 1:
-        raise ValueError("n_serial can not be less than 1")
-    if job_info["nevents_per_simul_run"] < 1:
-        raise ValueError("nevents_per_simul_run should be larger "
-                         "than 1")
-    if job_info["walltime_per_simulation"] <= 0:
-        raise ValueError("walltime_per_simulation shoulb be > 0")
-
-    data_info = config["data_info"]
-    keys = ["stationfolder", "runbase", "total_eventfile",
-            "job_tag", "specfemdir"]
-    if simul_type in ["source_inversion", "forward_simulation"]:
-        keys.append("cmtfolder")
-    for key in keys:
-        if key not in data_info:
-            raise ValueError("Key(%s) not in config data_info" % (key))
-
-    user_info = config["user_info"]
-    keys = ["email"]
-    for key in keys:
-        if key not in user_info:
-            raise ValueError("Key(%s) not in config user_info" % key)
-
-    # validate certain simulation types
-    if simul_type == "source_inversion":
-        validate_config_srcinv(config)
-    elif simul_type == "adjoint_simulation":
-        validate_config_adjoint(config)
-    elif simul_type == "forward_simulation":
-        validate_config_forward(config)
-
-
-def load_config(filename):
-    with open(filename) as fh:
-        config = yaml.load(fh)
-    # validate_config(config)
-    return config
-
-
-def dump_yaml(content, filename):
-    with open(filename, 'w') as fh:
-        yaml.dump(content, fh, indent=2)
+        print("func [%s] took: %2.4f sec" % (func.__name__, te-ts))
+        return result
+    return timed
 
 
 def safe_makedir(dirname):
@@ -91,17 +26,6 @@ def safe_makedir(dirname):
 def check_exist(filename):
     if not os.path.exists(filename):
         raise ValueError("Path not exists: %s" % filename)
-
-
-def read_txt_into_list(filename):
-    with open(filename, "r") as f:
-        return [x.rstrip("\n") for x in f]
-
-
-def dump_list_to_txt(filename, content):
-    with open(filename, 'w') as f:
-        for line in content:
-            f.write("%s\n" % line)
 
 
 def cleantree(folder):
@@ -152,3 +76,58 @@ def get_permission():
         return False
     else:
         raise ValueError("answer incorrect: %s" % answer)
+
+
+def check_folders_exist(targetdir_list):
+    clean_status = 1
+    for targetdir in targetdir_list:
+        if os.path.exists(targetdir):
+            print("job folder exists: %s" % targetdir)
+            clean_status = 0
+
+    if clean_status == 0:
+        print("Removed?")
+        if get_permission():
+            for _dir in targetdir_list:
+                if os.path.exists(_dir):
+                    cleantree(_dir)
+        else:
+            sys.exit(0)
+
+
+def get_package_path():
+    import seisforward
+    return seisforward.__path__[0]
+
+
+def safe_remove(_dir):
+    if os.path.isdir(_dir):
+        if os.path.islink(_dir):
+            os.unlink(_dir)
+        else:
+            shutil.rmtree(_dir)
+    else:
+        if os.path.islink(_dir):
+            os.unlink(_dir)
+        else:
+            shutil.remove(_dir)
+
+
+def clean_specfem(specfemdir):
+    """
+    Clean run**** from specfem directory
+    """
+    # clean previous run_**** first
+    dirlist = glob.glob(os.path.join(specfemdir, "run*"))
+    print("remove dirlist: ", dirlist)
+    for _dir in dirlist:
+        safe_remove(_dir)
+
+
+def make_title(text, symbol="=", symbol_len=10, space_len=3):
+    total_len = len(text) + symbol_len * 2 + space_len * 2
+    string = symbol * total_len + "\n"
+    string += symbol * symbol_len + " " * space_len + text + \
+        " " * space_len + symbol * symbol_len + "\n"
+    string += symbol * total_len
+    return string
