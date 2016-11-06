@@ -261,6 +261,7 @@ class ForwardValidator(ForwardManager):
     the table.
     """
     def run(self):
+        check_forward_job(self.config["db_name"])
         entries = self.fetch_with_status(statusobj.ready_to_launch)
         print("Number items(ready_to_launch): %d" % len(entries))
 
