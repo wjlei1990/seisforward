@@ -1,0 +1,47 @@
+# There are two types of forward simulation
+# 1) source_inversion
+# 2) forward_simulation
+# 3) adjoint_simulation
+simulation_type: "forward_simulation"
+
+# databaes name
+db_name: "test.db"
+
+# RUNBASE: the runbase is the directory where holds all running files
+# So make sure that your runbase is large enough to hold everything
+runbase: "/lustre/atlas/proj-shared/geo111/Wenjie/test_runbase"
+
+# job sub-folder tag, the path of job is "$runbase/jobs/job_$job_tag_XXX"
+job_tag: "M16_betatest"
+
+job_config:
+  # job configuration information
+  # number of serial runs(serial excution of simul runs)
+  n_serial: 2
+  # number of events in one job(with simultaneous run)
+  nevents_per_simul_run: 2
+  # walltime for one forward simulation(unit is minutes)
+  walltime_per_simulation: 20
+
+data_info:
+  # Infomation for CMTSOLUTION directory, STATIONS direcotry
+  # CMT folder: directory where you store cmt files, it will used to
+  # construct the paths of CMT files --- "$cmtfolder/$eventname"
+  cmtfolder: "/ccs/proj/geo111/wenjie/AdjointTomography/M16_runbase/CMT"
+
+  # station folder: directory where you store station files, it will be
+  # used to construct the paths of STATIONS file:
+  # forward simulation: "$stationfolder/STATIONS.$eventname"
+  # adjoint simulation: "$stationfolder/STATIONS_ADJOINT.$eventname"
+  stationfolder: "/ccs/proj/geo111/wenjie/AdjointTomography/M16_runbase/STATIONS"
+
+  # the direcotry of specfem3d_globe. The program will copy necessary stuff into
+  # $runbase/specfem3d_globe, then the copied stuff will be used.
+  specfemdir: "/lustre/atlas/proj-shared/geo111/Wenjie/specfem3d_globe_11af69"
+
+  # The total number of events
+  total_eventfile: "cmtlist"
+
+user_info:
+  # email address to be placed in pbs job script for email notification
+  email: "lei@princeton.edu"
