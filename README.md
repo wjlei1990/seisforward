@@ -15,3 +15,5 @@ git clone https://github.com/wjlei1990/seisforward
 cd seisforward
 pip install -v -e .
 ```
+
+### Usage

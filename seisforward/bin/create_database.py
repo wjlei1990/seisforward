@@ -13,7 +13,10 @@ from seisforward.db import Base, SolverStatus
 from seisforward.io import load_config
 
 
-def create_db(db_name, verbose=False):
+def create_forward_db(db_name, verbose=False):
+    """
+    Create the empty database
+    """
     if os.path.exists(db_name):
         raise ValueError("Database(%s) already exists!" % (db_name))
 
@@ -32,6 +35,18 @@ def create_db(db_name, verbose=False):
     session.close()
 
 
+def check_db_exists(db_name):
+    """
+    Check the existence of database(use the same one as forward simulation)
+    Since adjoint simulation just need two more extra files,
+    DATA/STATIONS_ADJOINT and SEM/adjoint.h5, copied to the event dir.
+    So there is no need to build up a new database.
+    """
+    if not os.path.exists(db_name):
+        raise ValueError("Database for adjoint runs not exists: %s"
+                         % db_name)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', action='store', dest='config_file',
@@ -41,8 +56,14 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config_file)
+
+    stype = config["simulation_type"]
     db_name = config["db_name"]
-    create_db(db_name, args.verbose)
+
+    if stype == "forward_simulation" or "line_search":
+        create_forward_db(db_name, args.verbose)
+    elif stype == "adjoint_simulation":
+        check_db_exists(db_name)
 
 
 if __name__ == "__main__":

@@ -1,17 +1,22 @@
 # There are two types of forward simulation
 # 1) forward_simulation
 # 2) adjoint_simulation
-simulation_type: "forward_simulation"
+simulation_type: "line_search"
 
 # databaes name
 db_name: "test.db"
 
 # RUNBASE: the runbase is the directory where holds all running files
 # So make sure that your runbase is large enough to hold everything
-runbase: "/lustre/atlas/proj-shared/geo111/Wenjie/test_runbase"
+runbase: "/lustre/atlas/proj-shared/geo111/Wenjie/test_runbase_ls"
 
 # job sub-folder tag, the path of job is "$runbase/jobs/job_$job_tag_XXX"
-job_folder_prefix: "M16_betatest"
+job_folder_prefix: "MXX_line_search"
+
+# model perturbations values. For each source, it will launch one simulation
+# for one perturbation model.
+# model_perturbations: [0.0025, 0.0050, 0.0075, 0.0100, 0.0125, 0.0150]
+model_perturbations: [0.0025, 0.0050]
 
 job_config:
   # job configuration information

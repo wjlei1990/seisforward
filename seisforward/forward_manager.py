@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-
 from __future__ import print_function, division, absolute_import
 import os
+import time
 import glob
 from collections import defaultdict
 import shutil
@@ -53,8 +53,9 @@ def setup_entry_dir(entries, specfemdir):
             file2 = os.path.join(targetdir, _file)
             shutil.copy(file1, file2)
 
-        # mkdir DATABASES_MPI(but no files copied, using symbolic links
-        # instead)
+        # mkdir DATABASES_MPI, but no files copied at this stage(
+        # using symbolic links for model files instead at simulation
+        # stage)
         targetdir = os.path.join(runbase, "DATABASES_MPI")
         safe_makedir(targetdir)
 
@@ -147,7 +148,7 @@ def create_db_connection(db_name):
 
 class ForwardManager(object):
     """
-    Forward simulation manager.
+    Forward simulation manager(mainly DB utilities)
     """
     def __init__(self, config):
         self._load_config(config)
@@ -157,28 +158,30 @@ class ForwardManager(object):
 
     def _load_config(self, config):
         if isinstance(config, str):
+            # it is the file
             if not os.path.exists(config):
                 raise ValueError("Config file(%s) not eixsts!")
-            else:
-                config = load_config(config)
+            config = load_config(config)
 
         validate_config(config)
         self.config = deepcopy(config)
 
-    def fetch_with_status(self, status, num_to_fetch=None):
+    def fetch_with_status(self, status, tag=None, num_to_fetch=None):
         """
         Fetch Solver and Event together from database
         """
         session = self.Session()
-        if num_to_fetch is None:
-            entries = session.query(Solver, Event).join(Event).\
-                filter(Solver.status == status).\
-                order_by(Solver.id).all()
-        else:
-            entries = session.query(Solver, Event).join(Event).\
-                filter(Solver.status == status).\
-                order_by(Solver.id).limit(num_to_fetch).all()
+        query = session.query(Solver, Event).join(Event).\
+            filter(Solver.status == status)
 
+        if tag is not None:
+            query = query.filter(Solver.tag == tag)
+
+        query = query.order_by(Solver.id)
+        if num_to_fetch is not None and num_to_fetch > 0:
+            query = query.limit(num_to_fetch)
+
+        entries = query.all()
         session.close()
         return entries
 
@@ -198,10 +201,11 @@ class ForwardManager(object):
         session.commit()
         session.close()
 
-    def retrieve_new_entries_from_db(self, num_to_fetch):
+    def retrieve_new_entries_from_db(self, tag=None, num_to_fetch=None):
         job_entries = []
         while True:
-            entries = self.fetch_with_status(statusobj.new, num_to_fetch)
+            entries = self.fetch_with_status(
+                statusobj.new, tag=tag, num_to_fetch=num_to_fetch)
             if len(entries) < num_to_fetch:
                 break
             validate_entries(entries)
@@ -224,14 +228,16 @@ class ForwardSolver(ForwardManager):
               % (n_serial, n_simul, num_to_fetch))
 
         runbase = self.config["runbase"]
-        job_entries = self.retrieve_new_entries_from_db(num_to_fetch)
+        job_entries = self.retrieve_new_entries_from_db(
+            num_to_fetch=num_to_fetch)
         job_base = os.path.join(runbase, "jobs")
         njobs = len(job_entries)
         print("Number of jobs: %d" % njobs)
 
-        tag = self.config["job_tag"]
-        job_dirs = [os.path.join(job_base, "job_%s_%02d" % (tag, idx+1))
-                    for idx in range(njobs)]
+        job_prefix = self.config["job_folder_prefix"]
+        job_dirs = [
+            os.path.join(job_base, "job_%s_%02d" % (job_prefix, idx+1))
+            for idx in range(njobs)]
         check_folders_exist(job_dirs)
         return job_dirs, job_entries
 
@@ -260,24 +266,36 @@ class ForwardValidator(ForwardManager):
     External validator to validate the jobs and change status in
     the table.
     """
-    def run(self):
+    def run(self, mode=1):
+        """
+        mode 1: checks the existence of synthetic.h5 and
+        """
         check_forward_job(self.config["db_name"])
-        entries = self.fetch_with_status(statusobj.ready_to_launch)
-        print("Number items(ready_to_launch): %d" % len(entries))
+
+        self.check_certain_job_status(statusobj.ready_to_launch, mode=mode)
+        self.check_certain_job_status(statusobj.done, mode=mode)
+        self.check_certain_job_status(statusobj.file_not_found, mode=mode)
+
+    def check_certain_job_status(self, job_status, mode=1):
+        entries = self.fetch_with_status(job_status)
+        print("=" * 20)
+        print("Number of items(%s): %d" % (job_status, len(entries)))
 
         before = defaultdict(lambda: 0)
         after = defaultdict(lambda: 0)
         for solver, _ in entries:
             before[solver.status] += 1
-            self.validate(solver)
+            # print("Solver: %s" % solver)
+            self.validate(solver, mode=mode)
             after[solver.status] += 1
+            # print("new status: %s" % solver.status)
 
         print("status before: %s" % before)
         print("status after:  %s" % after)
         self.update_with_status(entries)
 
     @staticmethod
-    def validate(solver):
+    def validate(solver, mode=1):
         runbase = solver.runbase
 
         # check output asdf file
@@ -286,24 +304,31 @@ class ForwardValidator(ForwardManager):
             solver.status = statusobj.file_not_found
             return
 
-        code = hdf5_validator(output_asdf)
-        if code != 0:
-            solver.status = statusobj.invalid_file
-            return
+        if mode == 2:
+            _t = time.time()
+            code = hdf5_validator(output_asdf)
+            if code != 0:
+                solver.status = statusobj.invalid_file
+                return
+            hdf5_t = time.time() - _t
+            print("ASDF file(hdf5) validate time: %.1f" % hdf5_t)
 
         # check saved wavefields
         wavefields = glob.glob(os.path.join(runbase, "DATABASES_MPI",
                                             "save_frame_at*.bp"))
         wavefields.sort()
-        if len(wavefields) <= 0:
+        if len(wavefields) != 26:
             solver.status = statusobj.file_not_found
             return
 
-        code = bp_validator(wavefields[-1])
-        if code != 0:
-            print("e4")
-            solver.status = statusobj.invalid_file
-            return
+        if mode == 2:
+            _t = time.time()
+            code = bp_validator(wavefields[-1])
+            if code != 0:
+                solver.status = statusobj.invalid_file
+                return
+            bp_t = time.time() - _t
+            print("model files(bp) time:  %.1f" % bp_t)
 
         solver.status = statusobj.done
 

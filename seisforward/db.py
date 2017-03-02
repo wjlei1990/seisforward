@@ -46,14 +46,19 @@ class Solver(Base):
     stationfile = Column(String)
     runbase = Column(String, unique=True)
     status = Column(String, ForeignKey('status.name'))
+    # user defined tag(in line search jobs, it can be perturbation
+    # values so it helps to group jobs with the same perturbation
+    # values)
+    tag = Column(String)
 
     event_id = Column(Integer, ForeignKey('event.id'))
     event = relationship("Event", back_populates="solver")
 
     def __repr__(self):
         return "<Solver(stationfile='%s', runbase='%s', " \
-            "status='%s')>" % (
-                self.stationfile, self.runbase, self.status)
+            "status='%s', tag='%s')>" % (
+                self.stationfile, self.runbase, self.status,
+                self.tag)
 
 
 class AdjointSolver(Base):

@@ -49,8 +49,8 @@ def fill_forward_db(config, verbose=False):
         solver = Solver(stationfile=stationfile,
                         runbase=entry_rundir,
                         status=Status().new)
-        print(solver)
         solver.event = eventobj
+        print(solver)
         session.add(solver)
 
     session.commit()
@@ -58,11 +58,63 @@ def fill_forward_db(config, verbose=False):
 
 
 def fill_adjoint_db(config, verbose=False):
-    raise NotImplementedError("Not implemented yet with adjoint")
+    """
+    Nothing needs to be done for adjoint jobs.
+    """
+    print("Nothing done. Using the existing information from forward"
+          "simulation")
 
 
-def fill_srcinv_db(config, verbose=False):
-    raise NotImplementedError("Not implemented yet with source inversion")
+def fill_line_search_db(config, verbose=False):
+    """
+    The line search is basically a bunch of forward simulations with
+    different perturbation values. For one event, it needs to launch
+    len(model_perturbations) forward simulations. However, the cmt
+    solution file and station file are identical. Just set the
+    entry_rundir and tag differently(according to perturbations).
+    """
+    db_name = config["db_name"]
+    runbase = config["runbase"]
+
+    perturbs = config["model_perturbations"]
+    cmtfolder = config["data_info"]["cmtfolder"]
+    stationfolder = config["data_info"]["stationfolder"]
+
+    print("Filling database: %s" % db_name)
+    print("=" * 20)
+    print("Runbase: %s" % runbase)
+    print("cmtfolder: %s" % cmtfolder)
+    print("stationfolder:%s" % stationfolder)
+    print("model perturbation: %s" % perturbs)
+
+    eventfile = config["data_info"]["total_eventfile"]
+    events = read_txt_into_list(eventfile)
+    nevents = len(events)
+    print("eventfile: %s" % eventfile)
+    print("Number of events: %s" % nevents)
+
+    engine = create_engine('sqlite:///%s' % db_name, echo=False)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    for idx, eventname in enumerate(events):
+        print("-" * 5 + " [%d/%d]%s " % (idx+1, nevents, eventname) + "-" * 5)
+        cmtfile = os.path.join(cmtfolder, eventname)
+        stationfile = os.path.join(stationfolder, "STATIONS.%s" % eventname)
+        eventobj = Event(eventname=eventname, cmtfile=cmtfile)
+
+        for mp in perturbs:
+            tag = "perturb_%.4f" % mp
+            entry_rundir = os.path.join(
+                runbase, "archive", tag, eventname)
+            solver = Solver(stationfile=stationfile, runbase=entry_rundir,
+                            status=Status().new, tag=tag)
+            solver.event = eventobj
+            print(solver)
+            session.add(solver)
+
+    session.commit()
+    session.close()
 
 
 def main():
@@ -82,8 +134,8 @@ def main():
         fill_adjoint_db(config, verbose=args.verbose)
     elif simul_type == "forward_simulation":
         fill_forward_db(config, verbose=args.verbose)
-    elif simul_type == "source_inversion":
-        fill_srcinv_db(config, verbose=args.verbose)
+    elif simul_type == "line_search":
+        fill_line_search_db(config, verbose=args.verbose)
     else:
         raise ValueError("Unsupported simulation type(%s)" % simul_type)
 

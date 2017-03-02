@@ -14,12 +14,14 @@ def fortran_bool(string):
         return None
 
 
-def check_specfem(specfemdir):
+def check_specfem(specfemdir, model_flag=True):
     """ Check all necessary files for job running """
     print(make_title("Checking SPECFEM3D_GLOBE", symbol="*",
                      symbol_len=5))
     check_specfem_common(specfemdir)
-    check_specfem_model(specfemdir)
+
+    if model_flag:
+        check_specfem_model(specfemdir)
 
     parfile = os.path.join(specfemdir, "DATA", "Par_file")
     check_specfem_parfile(parfile)

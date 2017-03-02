@@ -1,8 +1,12 @@
+from __future__ import print_function, division, absolute_import
 from subprocess import call
 import yaml
 
 
 def load_config(filename):
+    """
+    load the config yaml file
+    """
     with open(filename) as fh:
         config = yaml.load(fh)
     # validate_config(config)
@@ -15,8 +19,8 @@ def dump_yaml(content, filename):
 
 
 def read_txt_into_list(filename):
-    with open(filename, "r") as f:
-        return [x.rstrip("\n") for x in f]
+    with open(filename, "r") as fh:
+        return [x.rstrip() for x in fh]
 
 
 def dump_list_to_txt(content, filename):

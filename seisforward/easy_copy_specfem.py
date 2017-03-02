@@ -37,7 +37,7 @@ def easy_copy_specfem(specfemdir, targetdir, model_flag=True):
     if not os.path.exists(specfemdir):
         raise ValueError("No specfem dir: %s" % specfemdir)
 
-    check_specfem(specfemdir)
+    check_specfem(specfemdir, model_flag=model_flag)
 
     safe_makedir(os.path.join(targetdir, "DATA"))
     safe_makedir(os.path.join(targetdir, "bin"))

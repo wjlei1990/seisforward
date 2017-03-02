@@ -12,7 +12,23 @@ The output job scripts will be put at "$runbase/jobs"
 """
 from __future__ import print_function, division, absolute_import
 import argparse
+from seisforward.io import load_config
 from seisforward.forward_manager import ForwardSolver
+from seisforward.line_search_manager import LineSearchSolver
+
+
+def create_forward_jobs(config):
+    manager = ForwardSolver(config=config)
+    manager.create_jobs()
+
+
+def create_adjoint_jobs(config):
+    raise NotImplementedError("adjoint not implemented yet!")
+
+
+def create_line_search_jobs(config):
+    manager = LineSearchSolver(config=config)
+    manager.create_jobs()
 
 
 def main():
@@ -21,8 +37,17 @@ def main():
                         required=True, help="config yaml file")
     args = parser.parse_args()
 
-    manager = ForwardSolver(config=args.config_file)
-    manager.create_jobs()
+    config = load_config(args.config_file)
+
+    stype = config["simulation_type"]
+    if stype == "forward_simulation":
+        create_forward_jobs(config)
+    elif stype == "adjoint_simulation":
+        create_adjoint_jobs(config)
+    elif stype == "line_search":
+        create_line_search_jobs(config)
+    else:
+        raise NotImplementedError("Error: %s" % stype)
 
 
 if __name__ == "__main__":

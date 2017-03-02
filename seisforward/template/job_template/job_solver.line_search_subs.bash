@@ -1,16 +1,5 @@
 #!/bin/bash
 
-#PBS -A GEO111
-#PBS -N SPECFEM3D_solver
-#PBS -j oe
-#PBS -m a
-#PBS -m b
-#PBS -m e
-#PBS -M NAP@princeton.edu
-#PBS -o job_sb.$PBS_JOBID.o
-#PBS -l nodes=NAN
-#PBS -l walltime=NAN
-
 # -----------------------------------------------------
 # This is a simulataneous and serial job script
 # for example, you have 250 events and 50 simultaneous run
@@ -26,13 +15,9 @@ numproc=NAN
 timeout_aprun=NAN
 # -----------------------------------------------------
 
-cd $PBS_O_WORKDIR
-cat $PBS_NODEFILE > compute_nodes.$PBS_JOBID
-echo "$PBS_JOBID" > jobid.$PBS_JOBID
-
-pbsdir=`pwd`
+current_dir=`pwd`
 echo "running simulation: `date`"
-echo "Current directory: `pwd`"
+echo "Current directory: $current_dir"
 echo "specfem dir: $specfemdir"
 echo
 
@@ -123,12 +108,7 @@ do
     rm $subrundir
     event_idx=$(( $event_idx + 1 ))
   done
-  cd $pbsdir
+  cd $current_dir
   # end of one eventlist file
 done
 # end of all eventlist files
-
-echo -e "\n*********************************"
-echo "Summary: "
-echo "Success!"
-echo -e "*********************************\n"

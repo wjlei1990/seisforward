@@ -2,7 +2,11 @@
 """
 Set up directories for specfem simulation including
 specfem related files(model files, binary files and etc).
-Attention: this script only setup the basic directory
+Attention:
+1) this script only setup the basic directory.
+2) the copy of specfem(including model) might takes
+    a little long time, depending on your model size.
+
 Developer: Wenjie Lei
 -------------------
 Directory structure:
@@ -22,13 +26,37 @@ from seisforward.easy_copy_specfem import easy_copy_specfem
 
 def create_runbase(runbase):
     print("*" * 30 + "\nCreate runbase at dir: %s" % runbase)
-    if not os.path.exists(runbase):
-        os.makedirs(runbase)
+    safe_makedir(runbase)
 
     subdirs = ["archive", "jobs", "specfem3d_globe"]
-
     for _dir in subdirs:
         safe_makedir(os.path.join(runbase, _dir))
+
+
+def setup_forward_runbase(config):
+    specfemdir = config["data_info"]["specfemdir"]
+    runbase = config["runbase"]
+    targetdir = os.path.join(runbase, "specfem3d_globe")
+    easy_copy_specfem(specfemdir, targetdir)
+
+
+def setup_adjoint_runbase(config):
+    """
+    Nothing needs to be done at this stage
+    """
+    pass
+
+
+def setup_line_search_runbase(config):
+    """
+    Since line search will use different model files for
+    different perturbation values, there is no need to copy
+    the original mesh files here.
+    """
+    specfemdir = config["data_info"]["specfemdir"]
+    runbase = config["runbase"]
+    targetdir = os.path.join(runbase, "specfem3d_globe")
+    easy_copy_specfem(specfemdir, targetdir, model_flag=False)
 
 
 def main():
@@ -44,9 +72,15 @@ def main():
     runbase = config["runbase"]
     create_runbase(runbase)
 
-    specfemdir = config["data_info"]["specfemdir"]
-    targetdir = os.path.join(runbase, "specfem3d_globe")
-    easy_copy_specfem(specfemdir, targetdir)
+    stype = config["simulation_type"]
+    if stype == "forward_simulation":
+        setup_forward_runbase(config)
+    elif stype == "adjoint_simulation":
+        setup_adjoint_runbase(config)
+    elif stype == "line_search":
+        setup_line_search_runbase(config)
+    else:
+        raise NotImplementedError("Error: %s" % stype)
 
 
 if __name__ == "__main__":

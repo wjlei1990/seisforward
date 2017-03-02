@@ -46,16 +46,17 @@ def validate_config(config):
     """ Validtate config information """
     err = 0
 
-    keys = ["simulation_type", "db_name", "runbase", "job_tag",
+    simul_type = config["simulation_type"]
+
+    keys = ["simulation_type", "db_name", "runbase", "job_folder_prefix",
             "job_config", "data_info", "user_info"]
     for _key in keys:
         if _key not in config:
             print("Key(%s) missing in config" % (_key))
             err = -1
 
-    _options = ["source_inversion", "forward_simulation",
+    _options = ["line_search", "forward_simulation",
                 "adjoint_simulation"]
-    simul_type = config["simulation_type"]
     if simul_type not in _options:
         print("simulation_type(%s) not in %s" % (simul_type, _options))
         err = -1
