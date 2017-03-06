@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, absolute_import
 import os
-import time
-import glob
-from collections import defaultdict
 import shutil
 from copy import deepcopy
 
@@ -13,8 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from . import statusobj
 from .utils import safe_makedir, get_package_path, \
     check_folders_exist, clean_specfem, make_title
-from .io import bp_validator, hdf5_validator, load_config, \
-    dump_list_to_txt, dump_yaml
+from .io import load_config, dump_list_to_txt, dump_yaml
 from .validate_config import validate_config
 from .db import Solver, Event
 from .generate_pbs_script import generate_pbs_script, modify_specfem_parfile
@@ -261,78 +257,6 @@ class ForwardSolver(ForwardManager):
             create_job_folder(_dir, _entries, config, specfem_base)
 
 
-class ForwardValidator(ForwardManager):
-    """
-    External validator to validate the jobs and change status in
-    the table.
-    """
-    def run(self, mode=1):
-        """
-        mode 1: checks the existence of synthetic.h5 and
-        """
-        check_forward_job(self.config["db_name"])
-
-        self.check_certain_job_status(statusobj.ready_to_launch, mode=mode)
-        self.check_certain_job_status(statusobj.done, mode=mode)
-        self.check_certain_job_status(statusobj.file_not_found, mode=mode)
-
-    def check_certain_job_status(self, job_status, mode=1):
-        entries = self.fetch_with_status(job_status)
-        print("=" * 20)
-        print("Number of items(%s): %d" % (job_status, len(entries)))
-
-        before = defaultdict(lambda: 0)
-        after = defaultdict(lambda: 0)
-        for solver, _ in entries:
-            before[solver.status] += 1
-            # print("Solver: %s" % solver)
-            self.validate(solver, mode=mode)
-            after[solver.status] += 1
-            # print("new status: %s" % solver.status)
-
-        print("status before: %s" % before)
-        print("status after:  %s" % after)
-        self.update_with_status(entries)
-
-    @staticmethod
-    def validate(solver, mode=1):
-        runbase = solver.runbase
-
-        # check output asdf file
-        output_asdf = os.path.join(runbase, "OUTPUT_FILES", "synthetic.h5")
-        if not os.path.exists(output_asdf):
-            solver.status = statusobj.file_not_found
-            return
-
-        if mode == 2:
-            _t = time.time()
-            code = hdf5_validator(output_asdf)
-            if code != 0:
-                solver.status = statusobj.invalid_file
-                return
-            hdf5_t = time.time() - _t
-            print("ASDF file(hdf5) validate time: %.1f" % hdf5_t)
-
-        # check saved wavefields
-        wavefields = glob.glob(os.path.join(runbase, "DATABASES_MPI",
-                                            "save_frame_at*.bp"))
-        wavefields.sort()
-        if len(wavefields) != 26:
-            solver.status = statusobj.file_not_found
-            return
-
-        if mode == 2:
-            _t = time.time()
-            code = bp_validator(wavefields[-1])
-            if code != 0:
-                solver.status = statusobj.invalid_file
-                return
-            bp_t = time.time() - _t
-            print("model files(bp) time:  %.1f" % bp_t)
-
-        solver.status = statusobj.done
-
-
 def reset_forward_job(db_name):
     """
     reset forward table entries, whose status is not "Done" to "New"
@@ -378,3 +302,4 @@ def check_forward_job(db_name):
         results[entry.status] += 1
 
     print("Current status in Forward tables: %s" % results)
+    return results

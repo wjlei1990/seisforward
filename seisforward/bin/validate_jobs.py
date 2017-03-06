@@ -14,7 +14,7 @@ from __future__ import print_function, division, absolute_import
 
 import argparse
 from seisforward.io import load_config
-from seisforward.forward_manager import ForwardValidator
+from seisforward.forward_validator import ForwardValidator
 
 
 def main():

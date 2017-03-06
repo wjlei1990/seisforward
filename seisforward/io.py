@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 from subprocess import call
+import json
 import yaml
 
 
@@ -11,6 +12,11 @@ def load_config(filename):
         config = yaml.load(fh)
     # validate_config(config)
     return config
+
+
+def dump_json(content, fn):
+    with open(fn, 'w') as fh:
+        json.dump(content, fh, indent=2, sort_keys=True)
 
 
 def dump_yaml(content, filename):
