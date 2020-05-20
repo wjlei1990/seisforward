@@ -4,10 +4,10 @@
 simulation_type: "forward_simulation"
 
 batch_system:
-  name: "lsf"
-  ngpu_per_node: 6
-  nmpi_per_res: 2
-  ncpu_per_res: 2
+  name: "pbs"
+  ngpu_per_node: 1
+  nmpi_per_res: 1
+  ncpu_per_res: 1
 
 # databaes name
 db_name: "test.db"

@@ -18,5 +18,6 @@ def main():
     validate_config(config)
     print("Config file('%s') is valid!" % (config_file))
 
+
 if __name__ == "__main__":
     main()

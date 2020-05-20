@@ -35,7 +35,7 @@ def create_runbase(runbase):
 
 def setup_forward_runbase(config):
     specfemdir = config["data_info"]["specfemdir"]
-    runbase = config["runbase"]
+    runbase = config["runbase_info"]["runbase"]
     targetdir = os.path.join(runbase, "specfem3d_globe")
     easy_copy_specfem(specfemdir, targetdir)
 
@@ -54,7 +54,7 @@ def setup_line_search_runbase(config):
     the original mesh files here.
     """
     specfemdir = config["data_info"]["specfemdir"]
-    runbase = config["runbase"]
+    runbase = config["runbase_info"]["runbase"]
     targetdir = os.path.join(runbase, "specfem3d_globe")
     easy_copy_specfem(specfemdir, targetdir, model_flag=False)
 
@@ -69,10 +69,10 @@ def main():
     config = load_config(args.config_file)
     validate_config(config)
 
-    runbase = config["runbase"]
+    runbase = config["runbase_info"]["runbase"]
     create_runbase(runbase)
 
-    stype = config["simulation_type"]
+    stype = config["simulation"]["type"]
     if stype == "forward_simulation":
         setup_forward_runbase(config)
     elif stype == "adjoint_simulation":

@@ -21,7 +21,7 @@ def main():
     validate_config(config)
 
     specfemdir = config["data_info"]["specfemdir"]
-    targetdir = os.path.join(config["data_info"]["runbase"],
+    targetdir = os.path.join(config["runbase_info"]["runbase"],
                              "specfem3d_globe")
 
     easy_copy_specfem(specfemdir, targetdir)

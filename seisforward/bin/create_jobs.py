@@ -39,7 +39,7 @@ def main():
 
     config = load_config(args.config_file)
 
-    stype = config["simulation_type"]
+    stype = config["simulation"]["type"]
     if stype == "forward_simulation":
         create_forward_jobs(config)
     elif stype == "adjoint_simulation":

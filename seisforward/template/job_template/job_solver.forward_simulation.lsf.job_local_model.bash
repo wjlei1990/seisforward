@@ -1,15 +1,12 @@
 #!/bin/bash
 
-#PBS -A GEO111
-#PBS -N SPECFEM3D_solver
-#PBS -j oe
-#PBS -m a
-#PBS -m b
-#PBS -m e
-#PBS -M NAP@princeton.edu
-#PBS -o job_sb.$PBS_JOBID.o
-#PBS -l nodes=NAN
-#PBS -l walltime=NAN
+#BSUB -P GEO111
+#BSUB -J solver
+#BSUB -N
+#BSUB -o log.solver.%J
+#BSUB -alloc_flags gpumps
+#BSUB -nnodes 960
+#BSUB -W 2:00
 
 # -----------------------------------------------------
 # This is a simulataneous and serial job script
@@ -18,21 +15,20 @@
 # simultaneous runs
 # User Parameter
 specfemdir=NAN
-model_base=NAN
 linkbase=NAN
 # ---
 total_serial_runs=NAN
-numproc=NAN
 timeout_aprun=NAN
+# ---
+nres=NAN
+nmpi_per_res=NAN
+ncpu_per_res=NAN
 # -----------------------------------------------------
 
-cd $PBS_O_WORKDIR
-cat $PBS_NODEFILE > compute_nodes.$PBS_JOBID
-echo "$PBS_JOBID" > jobid.$PBS_JOBID
-
-pbsdir=`pwd`
+jobdir=`pwd`
+echo "job submit directory: $LS_SUBCWD"
+echo "Current directory: $jobdir"
 echo "running simulation: `date`"
-echo "Current directory: `pwd`"
 echo "specfem dir: $specfemdir"
 echo
 
@@ -60,7 +56,7 @@ do
   event_idx=1
   for event in ${eventlist[@]}
   do
-    echo "-------"
+    echo "----------"
     event_index_name=`printf "%04d" $event_idx`
     subrundir="$specfemdir/run$event_index_name"
     linkdir=$linkbase/$event
@@ -73,23 +69,6 @@ do
     fi
     ### LINK run000* to linkdir
     ln -s $linkdir $subrundir
-    if [ $event_idx == 1 ]; then
-      ### Clean model file in DATABASES_MPI
-      rm $linkdir/DATABASES_MPI/attenuation.bp
-      rm $linkdir/DATABASES_MPI/boundary.bp
-      rm $linkdir/DATABASES_MPI/solver_data.bp
-      rm $linkdir/DATABASES_MPI/solver_data_mpi.bp
-      rm $linkdir/DATABASES_MPI/proc000000_reg1_topo.bin
-      # LINK MODEL file for run0001 only
-      echo "model base: "$model_base
-      ln -s $model_base"/attenuation.bp" $subrundir"/DATABASES_MPI/attenuation.bp"
-      ln -s $model_base"/boundary.bp" $subrundir"/DATABASES_MPI/boundary.bp"
-      ln -s $model_base"/solver_data.bp" $subrundir"/DATABASES_MPI/solver_data.bp"
-      ln -s $model_base"/solver_data_mpi.bp" $subrundir"/DATABASES_MPI/solver_data_mpi.bp"
-      ln -s $model_base"/proc000000_reg1_topo.bin" $subrundir"/DATABASES_MPI/proc000000_reg1_topo.bin"
-      # echo "check model link"
-      # ls -alh $subrundir/DATABASES_MPI
-    fi
     # echo "check dir"
     # ls -alh $subrundir
     event_idx=$(( $event_idx + 1))
@@ -100,12 +79,9 @@ do
   echo "^^^^^^^^^^^^^^^^^^^^^^^^"
   cd $specfemdir
   echo "cd to specfemdir: `pwd`"
-  #ls -alh
   echo "solver start: `date`"
-  echo "timeout -s INT $timeout_aprun aprun -n $numproc -N1 ./bin/xspecfem3D"
-
-  timeout -s INT $timeout_aprun aprun -n $numproc -N1 ./bin/xspecfem3D
-
+  echo "jsrun -n $nres -a $nmpi_per_res -c $ncpu_per_res -g 1 ./bin/xspecfem3D"
+  jsrun -n $nres -a $nmpi_per_res -c $ncpu_per_res -g 1 ./bin/xspecfem3D
   touch run0001/OUTPUT_FILES/proof.txt
   echo "solver end: `date`"
 
@@ -123,7 +99,7 @@ do
     rm $subrundir
     event_idx=$(( $event_idx + 1 ))
   done
-  cd $pbsdir
+  cd $jobdir
   # end of one eventlist file
 done
 # end of all eventlist files

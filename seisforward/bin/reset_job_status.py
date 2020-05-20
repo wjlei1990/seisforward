@@ -12,8 +12,8 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config_file)
-    simul_type = config["simulation_type"]
-    db_name = config["db_name"]
+    simul_type = config["simulation"]["type"]
+    db_name = config["runbase_info"]["db_name"]
 
     if simul_type == "forward_simulation":
         reset_forward_job(db_name)

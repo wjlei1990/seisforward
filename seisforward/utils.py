@@ -38,7 +38,7 @@ def cleantree(folder):
                 os.unlink(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
-        except Exception, e:
+        except Exception as e:
             print(e)
 
 
@@ -69,7 +69,7 @@ def copyfile(origin_file, target_file, verbose=True):
 
 
 def get_permission():
-    answer = raw_input("[Y/n]:")
+    answer = input("[Y/n]:")
     if answer == "Y":
         return True
     elif answer == "n":
@@ -131,3 +131,16 @@ def make_title(text, symbol="=", symbol_len=10, space_len=3):
         " " * space_len + symbol * symbol_len + "\n"
     string += symbol * total_len
     return string
+
+
+def get_model_perturbation_string(mp, full_mode=True):
+    # if int((mp * 100000) % 10) == 0:
+    #    tag = "%.4f" % mp
+    # else:
+    #    tag = "%.5f" % mp
+    tag = "%.4f" % mp
+
+    if full_mode:
+        tag = "perturb_" + tag
+
+    return tag

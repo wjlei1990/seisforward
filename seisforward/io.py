@@ -9,7 +9,7 @@ def load_config(filename):
     load the config yaml file
     """
     with open(filename) as fh:
-        config = yaml.load(fh)
+        config = yaml.load(fh, Loader=yaml.FullLoader)
     # validate_config(config)
     return config
 

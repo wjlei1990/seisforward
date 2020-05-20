@@ -1,24 +1,35 @@
 # There are two types of forward simulation
 # 1) forward_simulation
 # 2) adjoint_simulation
-simulation_type: "forward_simulation"
+simulation:
+  type: "forward_simulation"
+  save_forward: False
 
+# batch system config for each single simulation
 batch_system:
   name: "lsf"
   ngpu_per_node: 6
-  nmpi_per_res: 2
-  ncpu_per_res: 2
+  nmpi_per_res: 1
+  ncpu_per_res: 1
 
-# databaes name
-db_name: "test.db"
 
-# RUNBASE: the runbase is the directory where holds all running files
-# So make sure that your runbase is large enough to hold everything
-runbase: "/lustre/atlas/proj-shared/geo111/Wenjie/test_runbase"
+# database and runbase information
+runbase_info:
+  # databaes name
+  db_name: "forward-src-4400.db"
 
-# job sub-folder tag, the path of job is "$runbase/jobs/job_$job_tag_XXX"
-job_folder_prefix: "M16_betatest"
+  # RUNBASE: the runbase is the directory where holds all running files
+  # So make sure that your runbase is large enough to hold everything
+  runbase: "/gpfs/alpine/scratch/lei/geo111/source_inversion_II/runbase"
 
+  # job sub-folder tag, the path of job is "$runbase/jobs/job_$job_tag_XXX"
+  job_folder_prefix: "forward-src-4400"
+
+  # copy specfem to job sub folder
+  copy_model_to_sub_job_folder: True
+
+
+# batch job information
 job_config:
   # job configuration information
   # number of serial runs(serial excution of simul runs)
@@ -26,26 +37,29 @@ job_config:
   # number of events in one job(with simultaneous run)
   nevents_per_simul_run: 2
   # walltime for one forward simulation(unit is minutes)
-  walltime_per_simulation: 20
+  walltime_per_simulation: 15
 
+
+# input data information
 data_info:
   # The list of event names
-  total_eventfile: "cmtlist"
+  total_eventfile: "event.8"
 
   # Infomation for CMTSOLUTION directory, STATIONS direcotry
   # CMT folder: directory where you store cmt files, it will used to
   # construct the paths of CMT files --- "$cmtfolder/$eventname"
-  cmtfolder: "/ccs/proj/geo111/wenjie/AdjointTomography/M16_runbase/CMT"
+  cmtfolder: "/ccs/home/lei/AdjointTomography/source_inversion/forward_simulation/forward.440_of_1480/cmt/CMT.perturb"
 
   # station folder: directory where you store station files, it will be
   # used to construct the paths of STATIONS file:
   # forward simulation: "$stationfolder/STATIONS.$eventname"
   # adjoint simulation: "$stationfolder/STATIONS_ADJOINT.$eventname"
-  stationfolder: "/ccs/proj/geo111/wenjie/AdjointTomography/M16_runbase/STATIONS"
+  stationfolder: "/ccs/home/lei/AdjointTomography/source_inversion/forward_simulation/forward.440_of_1480/station.specfem"
 
   # the direcotry of specfem3d_globe. The program will copy necessary stuff into
   # $runbase/specfem3d_globe, then the copied stuff will be used.
-  specfemdir: "/lustre/atlas/proj-shared/geo111/Wenjie/specfem3d_globe_11af69"
+  specfemdir: "/gpfs/alpine/scratch/lei/geo111/source_inversion_II/specfem3d_globe_990cd4"
+
 
 user_info:
   # email address to be placed in pbs job script for email notification

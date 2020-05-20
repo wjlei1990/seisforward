@@ -24,13 +24,14 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config_file)
-    simul_type = config["simulation_type"]
+    simul_type = config["simulation"]["type"]
 
     if simul_type == "forward_simulation":
         vd = ForwardValidator(config)
         vd.run()
-    elif simul_type == "source_inversion":
-        pass
+    elif simul_type == "line_search":
+        vd = ForwardValidator(config)
+        vd.run()
     elif simul_type == "adjoint_simulation":
         pass
     else:

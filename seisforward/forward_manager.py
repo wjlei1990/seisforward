@@ -13,7 +13,8 @@ from .utils import safe_makedir, get_package_path, \
 from .io import load_config, dump_list_to_txt, dump_yaml
 from .validate_config import validate_config
 from .db import Solver, Event
-from .generate_pbs_script import generate_pbs_script, modify_specfem_parfile
+from .generate_batch_script import generate_pbs_script, generate_lsf_script
+from .specfem_parfile_util import modify_specfem_parfile
 from .check_specfem import check_specfem
 from .easy_copy_specfem import easy_copy_specfem
 
@@ -119,16 +120,28 @@ def create_job_folder(job_dir, entries, config, specfem_base):
     # run locally
     local_specfem = os.path.join(job_dir, "specfem3d_globe")
     safe_makedir(local_specfem)
-    easy_copy_specfem(specfem_base, local_specfem, model_flag=False)
+
+    copy_model_flag = config["runbase_info"]["copy_model_to_sub_job_folder"]
+    easy_copy_specfem(specfem_base, local_specfem, model_flag=copy_model_flag)
     clean_specfem(local_specfem)
 
     # copy scripts template
-    simul_type = config["simulation_type"]
+    simul_type = config["simulation"]["type"]
+    batch_system = config["batch_system"]["name"]
+
     template = os.path.join(
-        get_package_path(), "template", "job_template",
-        "job_solver.%s.bash" % simul_type)
-    outputfn = os.path.join(job_dir, "job_solver.bash")
-    generate_pbs_script(template, outputfn, config, local_specfem)
+        get_package_path(),
+        "template",
+        "job_template",
+        "job_solver.{}.{}.bash".format(simul_type, batch_system))
+
+    outputfn = os.path.join(job_dir, "job_solver.{}.bash".format(batch_system))
+    if batch_system == "pbs":
+        generate_pbs_script(template, outputfn, config, local_specfem)
+    elif batch_system == "lsf":
+        generate_lsf_script(template, outputfn, config, local_specfem)
+    else:
+        raise ValueError("unkonwn batch system {}".format(batch_system))
 
     modify_specfem_parfile(config, local_specfem)
 
@@ -150,7 +163,7 @@ class ForwardManager(object):
         self._load_config(config)
 
         self.engine, self.Session = \
-            create_db_connection(self.config["db_name"])
+            create_db_connection(self.config["runbase_info"]["db_name"])
 
     def _load_config(self, config):
         if isinstance(config, str):
@@ -223,14 +236,14 @@ class ForwardSolver(ForwardManager):
         print("n_serial * n_simul = n_total: %d * %d = %d"
               % (n_serial, n_simul, num_to_fetch))
 
-        runbase = self.config["runbase"]
+        runbase = self.config["runbase_info"]["runbase"]
         job_entries = self.retrieve_new_entries_from_db(
             num_to_fetch=num_to_fetch)
         job_base = os.path.join(runbase, "jobs")
         njobs = len(job_entries)
         print("Number of jobs: %d" % njobs)
 
-        job_prefix = self.config["job_folder_prefix"]
+        job_prefix = self.config["runbase_info"]["job_folder_prefix"]
         job_dirs = [
             os.path.join(job_base, "job_%s_%02d" % (job_prefix, idx+1))
             for idx in range(njobs)]
@@ -240,7 +253,7 @@ class ForwardSolver(ForwardManager):
     def create_jobs(self):
         config = self.config
 
-        runbase = config["runbase"]
+        runbase = config["runbase_info"]["runbase"]
         specfem_base = os.path.join(runbase, "specfem3d_globe")
         check_specfem(specfem_base)
 

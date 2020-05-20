@@ -7,14 +7,15 @@ from __future__ import print_function, division, absolute_import
 import os
 import re
 
-from .generate_pbs_script import generate_pbs_script, modify_specfem_parfile, \
+from .generate_batch_script import generate_pbs_script, \
     get_walltime, get_nnodes
+from .specfem_parfile_util import modify_specfem_parfile
 from .check_specfem import check_specfem
 from .easy_copy_specfem import easy_copy_specfem
 from .forward_manager import setup_entry_dir, dump_eventlist, ForwardManager
 from .io import dump_yaml, read_txt_into_list, dump_list_to_txt
 from .utils import clean_specfem, get_package_path, make_title, \
-    check_folders_exist, safe_makedir
+    check_folders_exist, safe_makedir, get_model_perturbation_string
 
 
 def create_job_folder(job_dir, entries, config, specfem_base, model_perturb):
@@ -63,7 +64,7 @@ def modify_ls_overall_job_script(template, outputfn, config):
     model_perturbs = config["model_perturbations"]
     mp_string = "model_perturbs=("
     for mp in model_perturbs:
-        mp_string += '"%.4f" ' % mp
+        mp_string += "\"" + get_model_perturbation_string(mp, False) + "\" "
     mp_string += ")"
 
     # get nnodes and walltime
@@ -139,8 +140,8 @@ class LineSearchSolver(ForwardManager):
         model_perturbs = config["model_perturbations"]
         for mp in model_perturbs:
             # for each perturbation values, create sub job dir
-            tag = "perturb_%.4f" % mp
-            print(make_title("Model Perturbation: %.4f(%s)" % (mp, tag)))
+            tag = get_model_perturbation_string(mp)
+            print(make_title("Model Perturbation: %.5f(%s)" % (mp, tag)))
             job_dirs, job_entries = self.get_new_entries(tag)
 
             njobs = len(job_entries)

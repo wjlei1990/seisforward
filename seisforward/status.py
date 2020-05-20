@@ -12,7 +12,7 @@ class Status(object):
         self.file_not_found = "FileNotFound"
         self.invalid_file = "InvalidFile"
         self.unstable_simulation = "UnstableSimulation"
-        self.unfinshed_simulation = "UnfinishedSimulation"
+        self.unfinished_simulation = "UnfinishedSimulation"
 
     def get_status(self):
         return sorted(self.__dict__.values())

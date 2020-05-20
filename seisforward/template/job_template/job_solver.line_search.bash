@@ -32,9 +32,8 @@ echo
 for mp in ${model_perturbs[@]}
 do
   echo "+++++++++++++++++++++++++++++++++++++++++++++++++"
-  echo "Launching perturbation: $mp"
-  mp_string=`printf "%.4f" $mp`
-  subdir="perturb_$mp_string"
+  echo "Launching perturbation in dir: $mp"
+  subdir="perturb_$mp"
   if [ ! -d $subdir ]; then
     echo "No subdir: $subdir"
     exit

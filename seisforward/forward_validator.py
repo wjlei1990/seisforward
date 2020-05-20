@@ -28,7 +28,7 @@ class Error(object):
             % (self.code, self.old_status, self.new_status, self.msg)
 
 
-def validate_forward_simulation(solver, mode=1):
+def validate_forward_simulation(solver, save_forward, mode=1):
     runbase = solver.runbase
 
     # check the "OUTPUT_FILES/output_solver.txt"
@@ -45,9 +45,10 @@ def validate_forward_simulation(solver, mode=1):
         return err.msg
 
     # check the output wavefield
-    err = validate_wavefield(runbase, mode=mode)
-    if err.code != 0:
-        return err
+    if save_forward:
+        err = validate_wavefield(runbase, mode=mode)
+        if err.code != 0:
+            return err
 
     return Error(0, new_status=statusobj.done, msg="valid")
 
@@ -64,15 +65,18 @@ def validate_output_solver_txt(output_solver_txt):
     # then the simulation failed.
     unstable_flag = False
     content = read_txt_into_list(output_solver_txt)
+    checkpoint = 0
     for line in content:
         if "Max of strain, eps_trace_over_3_crust_mantle" in line:
             v = float(line.split()[-1])
             if math.isnan(v) or math.isinf(v):
                 unstable_flag = True
+            checkpoint += 1
         if "Max of strain, epsilondev_crust_mantle" in line:
             v = float(line.split()[-1])
             if math.isnan(v) or math.isinf(v):
                 unstable_flag = True
+            checkpoint += 1
 
     if unstable_flag:
         err.code = 1
@@ -84,6 +88,12 @@ def validate_output_solver_txt(output_solver_txt):
         err.code = 1
         err.new_status = statusobj.unfinished_simulation
         err.msg = "Unfinished simulation"
+        return err
+
+    if checkpoint < 2:
+        err.code = 1
+        err.new_status = statusobj.unfinished_simulation
+        err.msg = "Less than 2 checkpoint found in output_solver.txt"
         return err
 
     return Error(0, new_status=statusobj.done, msg="valid")
@@ -122,7 +132,7 @@ def validate_wavefield(runbase, mode=1):
         err.code = 1
         err.new_status = statusobj.invalid_file
         err.msg = "Not enough forward wavefiled files: %d < %d" % (
-            len(wavefields, 26))
+            len(wavefields), 26)
         return err
 
     if mode == 2:
@@ -146,9 +156,9 @@ class ForwardValidator(ForwardManager):
     """
     def run(self, mode=1):
         """
-        mode 1: checks the existence of synthetic.h5 and
+        mode 1: checks the existence of synthetic.h5
         """
-        status = check_forward_job(self.config["db_name"])
+        status = check_forward_job(self.config["runbase_info"]["db_name"])
 
         log = {}
         for _s in status:
@@ -167,10 +177,12 @@ class ForwardValidator(ForwardManager):
         before = defaultdict(lambda: 0)
         after = defaultdict(lambda: 0)
         log = []
+
+        save_forward = self.config["simulation"]["save_forward"]
         for solver, _ in entries:
             before[solver.status] += 1
             # print("Solver: %s" % solver)
-            _err = validate_forward_simulation(solver, mode=mode)
+            _err = validate_forward_simulation(solver, save_forward, mode=mode)
             _err.old_status = solver.status
             _log = _err.to_dict()
             _log["runbase"] = solver.runbase

@@ -118,7 +118,7 @@ def check_specfem_parfile(parfile_path):
             print("Error: Adjoint simulation can't save_forward")
             err = 1
     # else:
-    #    print("Error: Unrecongnized simulation_type(%d)" % stype)
+    #    print("Error: Unrecongnized simulation type(%d)" % stype)
     #    err = 1
 
     if nchunks != 6:
@@ -130,8 +130,8 @@ def check_specfem_parfile(parfile_path):
               "settings")
         err = 1
 
-    if model != "GLL":
-        print("Error: MODEL must be 'GLL'")
+    if model != "GLL" and model != "s362ani":
+        print("Error: MODEL must be 'GLL' or 's362ani': %s" % model)
         err = 1
 
     if not attenuation:
@@ -143,8 +143,8 @@ def check_specfem_parfile(parfile_path):
               " False")
         err = 1
 
-    if record_length < 30.0:
-        print("Error: record_lenght_in_minutes is shorter than 60 min")
+    if record_length <= 0.0:
+        print("Error: record_lenght_in_minutes is shorter than 0 min")
         err = 1
 
     if partial_phys_disp:
